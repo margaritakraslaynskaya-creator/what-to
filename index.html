@@ -1,0 +1,433 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>What to…</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,800&display=swap" rel="stylesheet">
+<style>
+  /* Colors come from the user's Telegram theme; fallbacks are for testing in a normal browser. */
+  :root {
+    --bg: var(--tg-theme-secondary-bg-color, #efeff4);
+    --surface: var(--tg-theme-section-bg-color, var(--tg-theme-bg-color, #ffffff));
+    --text: var(--tg-theme-text-color, #000000);
+    --hint: var(--tg-theme-hint-color, #8e8e93);
+    --accent: var(--tg-theme-button-color, #2481cc);
+    --accent-text: var(--tg-theme-button-text-color, #ffffff);
+    --link: var(--tg-theme-link-color, #2481cc);
+    --sep: var(--tg-theme-section-separator-color, rgba(128,128,128,.22));
+    --danger: var(--tg-theme-destructive-text-color, #e53935);
+    --display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+    --ui: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: var(--tg-theme-secondary-bg-color, #0f0f10);
+      --surface: var(--tg-theme-section-bg-color, var(--tg-theme-bg-color, #1c1c1e));
+      --text: var(--tg-theme-text-color, #ffffff);
+      --hint: var(--tg-theme-hint-color, #98989f);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 16px/1.4 var(--ui);
+    min-height: 100vh; display: flex; flex-direction: column;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button, input, textarea, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* Header: the one bold element */
+  header { padding: 20px 20px 8px; display: flex; align-items: flex-end; gap: 12px; }
+  .title { margin: 0; flex: 1; font-family: var(--display); line-height: .92; letter-spacing: -.03em; overflow: hidden; }
+  .title .lead { display: block; font-size: 22px; font-weight: 500; letter-spacing: -.01em; margin-bottom: 4px; color: var(--hint); }
+  .title .verb { display: block; font-size: clamp(48px, 15vw, 76px); font-weight: 800; word-break: break-word; }
+  .verb.swap { animation: swap .26s cubic-bezier(.2,.7,.2,1); }
+  @keyframes swap { from { transform: translateY(40%); opacity: 0; } to { transform: none; opacity: 1; } }
+  .count { margin: 6px 0 0; font-size: 14px; color: var(--hint); }
+  .icon-btn { border: 0; background: var(--surface); width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; color: var(--hint); flex: none; margin-bottom: 6px; }
+
+  /* Tabs */
+  .tabs { display: flex; gap: 8px; overflow-x: auto; padding: 12px 20px 14px; scrollbar-width: none; }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab { flex: none; border: 0; border-radius: 999px; padding: 8px 14px; background: var(--surface); white-space: nowrap; font-size: 15px; }
+  .tab[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); }
+  .tab.new { background: transparent; color: var(--link); box-shadow: inset 0 0 0 1.5px var(--sep); }
+
+  /* List */
+  main { flex: 1; padding: 0 12px 16px; }
+  .group { list-style: none; margin: 0; padding: 0; background: var(--surface); border-radius: 14px; overflow: hidden; }
+  .item { display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px; }
+  .item + .item { box-shadow: inset 0 1px 0 var(--sep); }
+  .check { flex: none; width: 24px; height: 24px; margin-top: 1px; border-radius: 50%; border: 2px solid var(--hint); background: transparent; padding: 0; display: grid; place-items: center; }
+  .check svg { width: 14px; height: 14px; opacity: 0; }
+  .done .check { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+  .done .check svg { opacity: 1; }
+  .body { flex: 1; min-width: 0; cursor: pointer; }
+  .t { display: block; overflow-wrap: anywhere; }
+  .done .t { color: var(--hint); text-decoration: line-through; }
+  .n { display: block; margin-top: 2px; font-size: 14px; color: var(--hint); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .n a { color: var(--link); text-decoration: none; }
+  .empty { text-align: center; color: var(--hint); padding: 40px 24px; }
+  .empty b { display: block; color: var(--text); font-weight: 600; margin-bottom: 4px; }
+  details { margin-top: 18px; }
+  summary { list-style: none; color: var(--hint); font-size: 14px; padding: 4px 8px 8px; cursor: pointer; }
+  summary::-webkit-details-marker { display: none; }
+  summary::before { content: "▸ "; }
+  details[open] summary::before { content: "▾ "; }
+
+  /* Composer */
+  .composer {
+    position: sticky; bottom: 0; display: flex; gap: 8px;
+    padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
+    background: var(--bg); box-shadow: 0 -1px 0 var(--sep);
+  }
+  .composer input { flex: 1; min-width: 0; border: 0; border-radius: 22px; padding: 11px 16px; background: var(--surface); outline: none; }
+  .composer input:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); outline: none; }
+  .add-btn { flex: none; width: 44px; height: 44px; border: 0; border-radius: 50%; background: var(--accent); color: var(--accent-text); display: grid; place-items: center; }
+  .add-btn:disabled { opacity: .4; }
+
+  /* Bottom sheet */
+  .sheet { position: fixed; inset: 0; z-index: 10; background: rgba(0,0,0,.4); display: flex; align-items: flex-end; }
+  .sheet[hidden] { display: none; }
+  .panel {
+    width: 100%; max-height: 90vh; overflow: auto; background: var(--bg);
+    border-radius: 18px 18px 0 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom, 0px));
+    animation: up .22s cubic-bezier(.2,.7,.2,1);
+  }
+  @keyframes up { from { transform: translateY(100%); } to { transform: none; } }
+  .panel h2 { margin: 0 4px 14px; font: 800 26px/1.1 var(--display); letter-spacing: -.02em; }
+  .field { display: block; margin-bottom: 12px; }
+  .field span { display: block; font-size: 13px; color: var(--hint); margin: 0 4px 6px; }
+  .field input, .field textarea, .field select { width: 100%; border: 0; border-radius: 12px; padding: 12px 14px; background: var(--surface); outline: none; resize: vertical; }
+  .field input:focus-visible, .field textarea:focus-visible, .field select:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
+  .pair { display: grid; grid-template-columns: 84px 1fr; gap: 10px; }
+  .pair input[name="emoji"] { text-align: center; font-size: 22px; padding: 8px; }
+  .actions { display: flex; gap: 10px; margin-top: 6px; }
+  .actions button { flex: 1; border: 0; border-radius: 12px; padding: 13px; font-weight: 600; }
+  .primary { background: var(--accent); color: var(--accent-text); }
+  .ghost { background: var(--surface); }
+  .danger { color: var(--danger); }
+
+  .toast { position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%); background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 10px; font-size: 14px; z-index: 20; max-width: 90vw; }
+  .toast[hidden] { display: none; }
+
+  @media (prefers-reduced-motion: reduce) { .verb.swap, .panel { animation: none; } }
+</style>
+</head>
+<body>
+  <header>
+    <h1 class="title"><span class="lead">What to</span><span class="verb" id="verb">watch</span></h1>
+    <button class="icon-btn" id="editList" aria-label="Edit this list">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
+    </button>
+  </header>
+  <p class="count" id="count" style="padding:0 20px;margin:0"></p>
+  <nav class="tabs" id="tabs" aria-label="Lists"></nav>
+  <main id="list"></main>
+  <form class="composer" id="composer" autocomplete="off">
+    <input id="addInput" maxlength="200" aria-label="New item">
+    <button class="add-btn" id="addBtn" aria-label="Add" disabled>
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+    </button>
+  </form>
+  <div class="sheet" id="sheet" hidden><div class="panel" id="panel" role="dialog" aria-modal="true"></div></div>
+  <div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+  const tg = window.Telegram && window.Telegram.WebApp;
+  const inTelegram = !!(tg && tg.initData);
+  const atLeast = v => inTelegram && tg.isVersionAtLeast(v);
+  const useCloud = atLeast('6.9');
+  if (tg) { tg.ready(); tg.expand(); }
+
+  const haptic = kind => {
+    if (!atLeast('6.1')) return;
+    try {
+      if (kind === 'tap') tg.HapticFeedback.selectionChanged();
+      else tg.HapticFeedback.notificationOccurred(kind);
+    } catch (e) {}
+  };
+
+  // ---------- Data ----------
+  const KEY = 'whatto.v1';
+  const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  const DEFAULTS = () => ({
+    v: 1,
+    current: 'watch',
+    cats: [
+      { id: 'watch', verb: 'watch', emoji: '🎬', hint: 'a film or series' },
+      { id: 'read',  verb: 'read',  emoji: '📚', hint: 'a book' },
+      { id: 'buy',   verb: 'buy',   emoji: '🛍️', hint: 'something to buy' },
+      { id: 'see',   verb: 'see',   emoji: '📍', hint: 'a place' }
+    ],
+    items: []
+  });
+
+  let state = null;
+  try { state = JSON.parse(localStorage.getItem(KEY)); } catch (e) {}
+  if (!state || !Array.isArray(state.cats)) state = DEFAULTS();
+
+  // Telegram CloudStorage: per user, per bot, synced across devices.
+  // Values are capped at 4096 chars, so the state is split into chunks s0..sN.
+  const CHUNK = 3000;
+  const cs = {
+    get: keys => new Promise((res, rej) => tg.CloudStorage.getItems(keys, (e, v) => e ? rej(e) : res(v))),
+    set: (k, v) => new Promise((res, rej) => tg.CloudStorage.setItem(k, v, (e, ok) => e ? rej(e) : res(ok))),
+    del: keys => new Promise((res, rej) => tg.CloudStorage.removeItems(keys, (e, ok) => e ? rej(e) : res(ok)))
+  };
+  let cloudCount = 0;
+
+  async function loadCloud() {
+    const { n } = await cs.get(['n']);
+    cloudCount = parseInt(n, 10) || 0;
+    if (!cloudCount) return null;
+    const keys = Array.from({ length: cloudCount }, (_, i) => 's' + i);
+    const vals = await cs.get(keys);
+    return JSON.parse(keys.map(k => vals[k] || '').join(''));
+  }
+
+  async function saveCloud(str) {
+    const parts = [];
+    for (let i = 0; i < str.length; i += CHUNK) parts.push(str.slice(i, i + CHUNK));
+    await Promise.all(parts.map((p, i) => cs.set('s' + i, p)));
+    await cs.set('n', String(parts.length));
+    if (cloudCount > parts.length) {
+      await cs.del(Array.from({ length: cloudCount - parts.length }, (_, i) => 's' + (parts.length + i)));
+    }
+    cloudCount = parts.length;
+  }
+
+  let cloudTimer = null, cloudChain = Promise.resolve();
+  function flushCloud() {
+    clearTimeout(cloudTimer); cloudTimer = null;
+    const str = JSON.stringify(state);
+    cloudChain = cloudChain.then(() => saveCloud(str))
+      .catch(() => toast('Couldn’t sync to Telegram. Your changes are kept on this device.'));
+  }
+  function persist() {
+    try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+    if (useCloud) { clearTimeout(cloudTimer); cloudTimer = setTimeout(flushCloud, 400); }
+  }
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && cloudTimer) flushCloud();
+  });
+
+  // ---------- Helpers ----------
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const linkify = s => esc(s).replace(/(https?:\/\/[^\s<]+)/g, '<a href="$1" data-link>$1</a>');
+  const cat = () => state.cats.find(c => c.id === state.current) || state.cats[0];
+  const hintFor = c => c.hint || 'something to ' + c.verb;
+
+  function openLink(url) {
+    if (inTelegram) tg.openLink(url); else window.open(url, '_blank', 'noopener');
+  }
+  function ask(msg) {
+    return new Promise(res => atLeast('6.2') ? tg.showConfirm(msg, res) : res(window.confirm(msg)));
+  }
+  let toastTimer;
+  function toast(msg) {
+    const t = $('toast'); t.textContent = msg; t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(() => t.hidden = true, 3200);
+  }
+
+  // ---------- Render ----------
+  let shownVerb = null;
+  function render() {
+    const c = cat();
+    state.current = c.id;
+
+    const verbEl = $('verb');
+    if (shownVerb !== c.verb) {
+      verbEl.textContent = c.verb;
+      if (shownVerb !== null) { verbEl.classList.remove('swap'); void verbEl.offsetWidth; verbEl.classList.add('swap'); }
+      shownVerb = c.verb;
+    }
+
+    const mine = state.items.filter(i => i.cat === c.id);
+    const open = mine.filter(i => !i.done).sort((a, b) => b.ts - a.ts);
+    const done = mine.filter(i => i.done).sort((a, b) => (b.doneAt || 0) - (a.doneAt || 0));
+    $('count').textContent = mine.length
+      ? `${open.length} left, ${done.length} done`
+      : 'Empty for now';
+
+    $('tabs').innerHTML = state.cats.map(x =>
+      `<button class="tab" data-cat="${esc(x.id)}" aria-pressed="${x.id === c.id}">${esc(x.emoji)} ${esc(x.verb)}</button>`
+    ).join('') + '<button class="tab new" id="newList">+ New list</button>';
+    const sel = $('tabs').querySelector('[aria-pressed="true"]');
+    if (sel) sel.scrollIntoView({ inline: 'nearest', block: 'nearest' });
+
+    const row = i => `
+      <li class="item${i.done ? ' done' : ''}" data-id="${esc(i.id)}">
+        <button class="check" data-act="toggle" aria-label="${i.done ? 'Mark as not done' : 'Mark as done'}">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+        </button>
+        <div class="body" data-act="edit" role="button" tabindex="0">
+          <span class="t">${esc(i.title)}</span>
+          ${i.note ? `<span class="n">${linkify(i.note)}</span>` : ''}
+        </div>
+      </li>`;
+
+    let html = open.length
+      ? `<ul class="group">${open.map(row).join('')}</ul>`
+      : `<div class="empty"><b>Nothing here yet</b>Add ${esc(hintFor(c))} below.</div>`;
+    if (done.length) {
+      html += `<details${state.showDone ? ' open' : ''}><summary>Done (${done.length})</summary><ul class="group">${done.map(row).join('')}</ul></details>`;
+    }
+    $('list').innerHTML = html;
+    const d = $('list').querySelector('details');
+    if (d) d.addEventListener('toggle', () => { state.showDone = d.open; persist(); });
+
+    $('addInput').placeholder = 'Add ' + hintFor(c);
+  }
+
+  // ---------- Sheet ----------
+  const sheet = $('sheet'), panel = $('panel');
+  function openSheet(html) {
+    panel.innerHTML = html; sheet.hidden = false;
+    if (atLeast('6.1')) { tg.BackButton.show(); tg.BackButton.onClick(closeSheet); }
+    const first = panel.querySelector('input, textarea');
+    if (first) setTimeout(() => first.focus(), 60);
+  }
+  function closeSheet() {
+    sheet.hidden = true; panel.innerHTML = '';
+    if (atLeast('6.1')) { tg.BackButton.offClick(closeSheet); tg.BackButton.hide(); }
+  }
+  sheet.addEventListener('click', e => { if (e.target === sheet) closeSheet(); });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && !sheet.hidden) closeSheet(); });
+
+  function editItem(item) {
+    openSheet(`
+      <h2>Edit</h2>
+      <form id="f">
+        <label class="field"><span>Title</span><input name="title" maxlength="200" value="${esc(item.title)}" required></label>
+        <label class="field"><span>Note or link</span><textarea name="note" rows="3" maxlength="1000" placeholder="Who recommended it, where to find it, a link…">${esc(item.note || '')}</textarea></label>
+        <label class="field"><span>List</span><select name="cat">${state.cats.map(c =>
+          `<option value="${esc(c.id)}"${c.id === item.cat ? ' selected' : ''}>${esc(c.emoji)} What to ${esc(c.verb)}</option>`).join('')}</select></label>
+        <div class="actions">
+          <button type="button" class="ghost danger" id="del">Delete</button>
+          <button class="primary">Save</button>
+        </div>
+      </form>`);
+    $('f').addEventListener('submit', e => {
+      e.preventDefault();
+      const f = new FormData(e.target);
+      const title = f.get('title').trim();
+      if (!title) return;
+      item.title = title; item.note = f.get('note').trim(); item.cat = f.get('cat');
+      persist(); closeSheet(); render(); haptic('success');
+    });
+    $('del').addEventListener('click', async () => {
+      if (!(await ask(`Delete “${item.title}”?`))) return;
+      state.items = state.items.filter(i => i !== item);
+      persist(); closeSheet(); render(); haptic('warning');
+    });
+  }
+
+  function editCategory(c) {
+    const isNew = !c;
+    const count = c ? state.items.filter(i => i.cat === c.id).length : 0;
+    openSheet(`
+      <h2>${isNew ? 'New list' : 'Edit list'}</h2>
+      <form id="f">
+        <div class="pair">
+          <label class="field"><span>Emoji</span><input name="emoji" maxlength="8" value="${esc(c ? c.emoji : '✨')}"></label>
+          <label class="field"><span>What to…</span><input name="verb" maxlength="24" placeholder="cook, try, learn" value="${esc(c ? c.verb : '')}" required></label>
+        </div>
+        <div class="actions">
+          ${isNew ? '<button type="button" class="ghost" id="cancel">Cancel</button>' : '<button type="button" class="ghost danger" id="del">Delete list</button>'}
+          <button class="primary">${isNew ? 'Create list' : 'Save'}</button>
+        </div>
+      </form>`);
+    $('f').addEventListener('submit', e => {
+      e.preventDefault();
+      const f = new FormData(e.target);
+      const verb = f.get('verb').trim().replace(/^what to\s+/i, '');
+      if (!verb) return;
+      const emoji = f.get('emoji').trim() || '•';
+      if (isNew) {
+        const id = uid();
+        state.cats.push({ id, verb, emoji });
+        state.current = id;
+      } else {
+        if (c.verb !== verb) delete c.hint;
+        c.verb = verb; c.emoji = emoji;
+      }
+      persist(); closeSheet(); render(); haptic('success');
+    });
+    if (isNew) $('cancel').addEventListener('click', closeSheet);
+    else $('del').addEventListener('click', async () => {
+      if (state.cats.length === 1) { toast('Keep at least one list.'); return; }
+      const msg = count ? `Delete “What to ${c.verb}” and its ${count} item${count === 1 ? '' : 's'}?` : `Delete “What to ${c.verb}”?`;
+      if (!(await ask(msg))) return;
+      state.cats = state.cats.filter(x => x !== c);
+      state.items = state.items.filter(i => i.cat !== c.id);
+      state.current = state.cats[0].id;
+      persist(); closeSheet(); render(); haptic('warning');
+    });
+  }
+
+  // ---------- Events ----------
+  $('tabs').addEventListener('click', e => {
+    const b = e.target.closest('button');
+    if (!b) return;
+    if (b.id === 'newList') return editCategory(null);
+    if (b.dataset.cat !== state.current) {
+      state.current = b.dataset.cat; persist(); render(); haptic('tap');
+    }
+  });
+  $('editList').addEventListener('click', () => editCategory(cat()));
+
+  $('list').addEventListener('click', e => {
+    const a = e.target.closest('a[data-link]');
+    if (a) { e.preventDefault(); openLink(a.getAttribute('href')); return; }
+    const li = e.target.closest('.item');
+    if (!li) return;
+    const item = state.items.find(i => i.id === li.dataset.id);
+    const act = e.target.closest('[data-act]');
+    if (!item || !act) return;
+    if (act.dataset.act === 'toggle') {
+      item.done = !item.done; item.doneAt = item.done ? Date.now() : null;
+      persist(); render(); haptic(item.done ? 'success' : 'tap');
+    } else editItem(item);
+  });
+  $('list').addEventListener('keydown', e => {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.body')) { e.preventDefault(); e.target.click(); }
+  });
+
+  const input = $('addInput'), addBtn = $('addBtn');
+  input.addEventListener('input', () => addBtn.disabled = !input.value.trim());
+  $('composer').addEventListener('submit', e => {
+    e.preventDefault();
+    const title = input.value.trim();
+    if (!title) return;
+    state.items.push({ id: uid(), cat: state.current, title, note: '', done: false, ts: Date.now() });
+    input.value = ''; addBtn.disabled = true;
+    persist(); render(); haptic('success');
+  });
+
+  // ---------- Start ----------
+  render();
+  if (useCloud) {
+    loadCloud()
+      .then(data => {
+        if (data && Array.isArray(data.cats)) {
+          state = data;
+          try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {}
+          shownVerb = null; render();
+        } else flushCloud(); // first launch: upload defaults
+      })
+      .catch(() => toast('Couldn’t load from Telegram. Showing what’s saved on this device.'));
+  }
+})();
+</script>
+</body>
+</html>
